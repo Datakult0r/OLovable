@@ -6,7 +6,6 @@ type PageType = "home" | "contact" | "claim" | "faqs" | "company" | "listing" | 
 type SiteImage = { src: string; alt: string };
 type PageSection = { heading: string; level: number; paragraphs: string[] };
 type PageData = { url: string; path: string; type: PageType; title: string; description: string; category: string; date: string; readTime: string; slug: string; images: SiteImage[]; sections: PageSection[] };
-
 type LinkItem = readonly [string, string];
 type NavGroup = { label: string; links: readonly LinkItem[] };
 
@@ -53,6 +52,32 @@ function useRoute() {
   return { path, navigate };
 }
 
+function useMotionReveal(routeKey: string) {
+  useEffect(() => {
+    const selector = [".section", ".page-hero", ".split-band", ".cta", ".content-card", ".content-flow section", ".form-section"].join(",");
+    const targets = Array.from(document.querySelectorAll<HTMLElement>(selector));
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) {
+      targets.forEach((target) => target.classList.add("is-visible"));
+      return;
+    }
+    targets.forEach((target, index) => {
+      target.classList.add("motion-reveal");
+      target.style.setProperty("--reveal-delay", `${Math.min(index * 45, 360)}ms`);
+    });
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
+    targets.forEach((target) => observer.observe(target));
+    return () => observer.disconnect();
+  }, [routeKey]);
+}
+
 function TextLink({ href, children, className = "", onNavigate }: { href: string; children: React.ReactNode; className?: string; onNavigate: (href: string) => void }) {
   return <a className={className} href={href} onClick={(event) => { if (internal(href)) { event.preventDefault(); onNavigate(href); } }}>{children}</a>;
 }
@@ -72,7 +97,7 @@ function Header({ path, onNavigate }: { path: string; onNavigate: (href: string)
 }
 
 function HeroArt({ page }: { page: PageData }) {
-  return <div className="hero-art" aria-hidden="true">{page.images.slice(0, 6).map((image) => <img key={image.src} src={image.src} alt="" />)}</div>;
+  return <div className="hero-art" aria-hidden="true">{page.images.slice(0, 6).map((image, index) => <img key={image.src} src={image.src} alt="" style={{ "--float-index": index } as React.CSSProperties} />)}</div>;
 }
 
 function Cards({ items, onNavigate, compact = false }: { items: PageData[]; onNavigate: (href: string) => void; compact?: boolean }) {
@@ -80,10 +105,10 @@ function Cards({ items, onNavigate, compact = false }: { items: PageData[]; onNa
 }
 
 function Home({ page, onNavigate }: { page: PageData; onNavigate: (href: string) => void }) {
-  const serviceIndexes = ["/services/consumer-claims", "/services/individual-services", "/services/complex-360"].map((path) => pages.find((candidate) => candidate.path === path)).filter(Boolean) as PageData[];
+  const serviceIndexes = ["/services/consumer-claims", "/services/individual-services", "/services/complex-360"].map((p) => pages.find((candidate) => candidate.path === p)).filter(Boolean) as PageData[];
   const services = pages.filter((candidate) => candidate.type === "service").slice(0, 9);
   const articles = pages.filter((candidate) => candidate.type === "article").slice(0, 6);
-  return <><section className="home-hero shell"><div><p className="eyebrow">Get the results that you deserve</p><h1>Making Complex Legal Issues <em>Simple</em></h1><p className="lead">{summary(page)}</p><div className="button-row"><ButtonLink href="/contact" onNavigate={onNavigate}>Speak to a solicitor</ButtonLink><ButtonLink href="/claim" onNavigate={onNavigate} variant="ghost">Start a claim online</ButtonLink></div></div><HeroArt page={page} /></section><section className="logo-strip shell">{page.images.filter((image) => image.alt).slice(0, 8).map((image) => <img key={image.src} src={image.src} alt={image.alt} />)}</section><section className="shell section"><div className="section-heading centered"><p className="eyebrow">Legal Services</p><h2>Legal services <em>tailored to your needs</em></h2><p>Consumer claims, individual disputes, and business support matched with the right legal team and strategy.</p></div><Cards items={serviceIndexes} onNavigate={onNavigate} compact /></section><section className="split-band shell"><div><p className="eyebrow">Our Promise</p><h2>The law is complex, but your case does not have to be</h2></div><p>We translate legal complexity into a clear strategy that helps you understand your options and stay in control.</p></section><section className="shell section"><div className="section-heading"><p className="eyebrow">Practice Areas</p><h2>Focused legal support</h2></div><Cards items={services} onNavigate={onNavigate} compact /></section><section className="section muted"><div className="shell"><div className="section-heading centered"><p className="eyebrow">Resources</p><h2>Plain-English updates and guides</h2></div><Cards items={articles} onNavigate={onNavigate} /></div></section><Cta onNavigate={onNavigate} /></>;
+  return <><section className="home-hero shell"><div className="hero-copy"><p className="eyebrow">Get the results that you deserve</p><h1>Making Complex Legal Issues <em>Simple</em></h1><p className="lead">{summary(page)}</p><div className="button-row"><ButtonLink href="/contact" onNavigate={onNavigate}>Speak to a solicitor</ButtonLink><ButtonLink href="/claim" onNavigate={onNavigate} variant="ghost">Start a claim online</ButtonLink></div></div><HeroArt page={page} /></section><section className="logo-strip shell">{page.images.filter((image) => image.alt).slice(0, 8).map((image) => <img key={image.src} src={image.src} alt={image.alt} />)}</section><section className="shell section"><div className="section-heading centered"><p className="eyebrow">Legal Services</p><h2>Legal services <em>tailored to your needs</em></h2><p>Consumer claims, individual disputes, and business support matched with the right legal team and strategy.</p></div><Cards items={serviceIndexes} onNavigate={onNavigate} compact /></section><section className="split-band shell"><div><p className="eyebrow">Our Promise</p><h2>The law is complex, but your case does not have to be</h2></div><p>We translate legal complexity into a clear strategy that helps you understand your options and stay in control.</p></section><section className="shell section"><div className="section-heading"><p className="eyebrow">Practice Areas</p><h2>Focused legal support</h2></div><Cards items={services} onNavigate={onNavigate} compact /></section><section className="section muted"><div className="shell"><div className="section-heading centered"><p className="eyebrow">Resources</p><h2>Plain-English updates and guides</h2></div><Cards items={articles} onNavigate={onNavigate} /></div></section><Cta onNavigate={onNavigate} /></>;
 }
 
 function PageHero({ page, onNavigate }: { page: PageData; onNavigate: (href: string) => void }) {
@@ -122,6 +147,7 @@ export default function App() {
   const { path, navigate } = useRoute();
   const pageMap = useMemo(() => new Map(pages.map((page) => [norm(page.path), page])), []);
   const page = pageMap.get(path);
+  useMotionReveal(path);
   useEffect(() => { document.title = page ? `${page.title} | Complex Law` : "Complex Law"; }, [page]);
   return <div><Header path={path} onNavigate={navigate} /><main>{!page ? <section className="page-hero shell"><div><p className="eyebrow">404</p><h1>Page not found</h1><p className="lead">This route is not part of the crawled sitemap.</p><ButtonLink href="/" onNavigate={navigate}>Back home</ButtonLink></div></section> : page.type === "home" ? <Home page={page} onNavigate={navigate} /> : page.type === "listing" ? <Listing page={page} onNavigate={navigate} /> : page.type === "claim" || page.type === "contact" ? <FormPage page={page} onNavigate={navigate} /> : <StandardPage page={page} onNavigate={navigate} />}</main><Footer onNavigate={navigate} /></div>;
 }
